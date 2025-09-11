@@ -6,37 +6,46 @@
     <title>ビジョントレーニング</title>
     <!-- Tailwind CSSを読み込みます -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js（音声ライブラリ）を読み込みます -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <style>
         /* Googleフォント「M PLUS Rounded 1c」を読み込みます。丸みのあるフォントで、親しみやすい印象を与えます。 */
         @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap');
         body {
             font-family: 'M PLUS Rounded 1c', sans-serif;
-            touch-action: none; /* スマートフォンやタブレットでのタッチ操作時に、画面が動かないようにします */
-        }
-        /* スライダーのつまみのスタイルを調整します */
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 24px;
-            height: 24px;
-            background: #ffffff;
-            border: 2px solid #4f46e5;
-            border-radius: 50%;
-            cursor: pointer;
-        }
-        input[type="range"]::-moz-range-thumb {
-            width: 24px;
-            height: 24px;
-            background: #ffffff;
-            border: 2px solid #4f46e5;
-            border-radius: 50%;
-            cursor: pointer;
+            touch-action: manipulation; /* ダブルタップによるズームを無効化し、ボタン操作を快適にします */
+            -webkit-user-select: none; /* テキスト選択を無効化 */
+            user-select: none;
         }
         /* アクティブなモードのボタンのスタイル */
         .mode-button.active {
             background-color: #818cf8; /* 淡い紫 */
             color: white;
             box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        /* コントロールボタンのスタイル */
+        .control-button {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: #e2e8f0; /* slate-200 */
+            color: #475569; /* slate-600 */
+            font-size: 1.5rem;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+        .control-button:active {
+            background-color: #cbd5e1; /* slate-300 */
+        }
+        .control-value {
+            font-size: 1.125rem; /* text-lg */
+            font-weight: 700;
+            color: #475569; /* slate-600 */
+            width: 40px;
+            text-align: center;
         }
     </style>
 </head>
@@ -61,60 +70,70 @@
         <!-- トレーニング画面のコンテナ -->
         <div id="canvas-container" class="w-full aspect-video bg-white rounded-2xl shadow-lg overflow-hidden border-4 border-slate-200 relative order-2">
             <canvas id="trainingCanvas"></canvas>
-            <!-- モード２用の情報表示は上記に移動しました -->
         </div>
 
         <!-- コントロールパネル -->
         <div class="w-full mt-4 bg-white p-4 rounded-2xl shadow-lg order-3">
-            <div class="flex flex-wrap justify-center items-end gap-x-6 gap-y-4">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap justify-center items-center gap-x-6 gap-y-6">
                 
                 <!-- モード選択ボタン -->
-                <div class="flex flex-col items-center">
-                    <label class="text-sm font-bold text-slate-600 mb-1 invisible">モード</label> <!-- レイアウト調整用の透明ラベル -->
+                <div class="flex flex-col items-center col-span-2 sm:col-span-3 md:order-1">
                      <div class="flex gap-2">
-                        <button id="modeChase" class="mode-button text-sm font-bold py-2 px-4 rounded-lg bg-slate-200 text-slate-700 transition-all w-24">よくみる</button>
-                        <button id="modeFind" class="mode-button text-sm font-bold py-2 px-4 rounded-lg bg-slate-200 text-slate-700 transition-all w-24">タッチ</button>
-                        <button id="modeAuto" class="mode-button text-sm font-bold py-2 px-4 rounded-lg bg-slate-200 text-slate-700 transition-all w-24">じどう</button>
-                    </div>
+                         <button id="modeChase" class="mode-button text-sm font-bold py-2 px-4 rounded-lg bg-slate-200 text-slate-700 transition-all w-24">よくみる</button>
+                         <button id="modeFind" class="mode-button text-sm font-bold py-2 px-4 rounded-lg bg-slate-200 text-slate-700 transition-all w-24">タッチ</button>
+                         <button id="modeAuto" class="mode-button text-sm font-bold py-2 px-4 rounded-lg bg-slate-200 text-slate-700 transition-all w-24">じどう</button>
+                     </div>
                 </div>
 
                 <!-- モード１用コントロール -->
                 <div id="chaseControls" class="contents">
-                    <div class="flex flex-col items-center">
-                        <label for="colorPicker" class="text-sm font-bold text-slate-600 mb-1">ボールのいろ</label>
+                    <div class="flex flex-col items-center md:order-2">
+                        <label for="colorPicker" class="text-sm font-bold text-slate-600 mb-2">ボールのいろ</label>
                         <input type="color" id="colorPicker" value="#14b8a6" class="w-16 h-10 p-1 bg-white border-2 border-slate-300 rounded-lg cursor-pointer">
                     </div>
-                    <div class="flex flex-col items-center">
-                        <label for="bgColorPicker" class="text-sm font-bold text-slate-600 mb-1">はいけいのいろ</label>
+                    <div class="flex flex-col items-center md:order-3">
+                        <label for="bgColorPicker" class="text-sm font-bold text-slate-600 mb-2">はいけいのいろ</label>
                         <input type="color" id="bgColorPicker" value="#ffffff" class="w-16 h-10 p-1 bg-white border-2 border-slate-300 rounded-lg cursor-pointer">
                     </div>
                 </div>
                  <!-- モード２＆じどう用コントロール -->
                 <div id="findControls" class="contents hidden">
-                     <div class="flex flex-col items-center justify-center w-24">
-                        <label for="ballCountRange" class="text-sm font-bold text-slate-600 mb-1">ボールのかず</label>
-                        <span id="ballCountValue" class="text-sm text-slate-500">8</span>
-                        <input type="range" id="ballCountRange" min="3" max="20" value="8" class="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer">
-                    </div>
+                     <div class="flex flex-col items-center justify-center md:order-4">
+                         <label class="text-sm font-bold text-slate-600 mb-2">ボールのかず</label>
+                         <div class="flex items-center gap-2">
+                            <button id="ballCountDecrement" class="control-button">-</button>
+                            <span id="ballCountValue" class="control-value">8</span>
+                            <button id="ballCountIncrement" class="control-button">+</button>
+                         </div>
+                     </div>
                 </div>
                  <!-- じどうモード用コントロール -->
                 <div id="autoControls" class="contents hidden">
-                     <div class="flex flex-col items-center justify-center w-24">
-                        <label for="autoSwitchRange" class="text-sm font-bold text-slate-600 mb-1">きりかえ</label>
-                        <span id="autoSwitchValue" class="text-sm text-slate-500">5秒</span>
-                        <input type="range" id="autoSwitchRange" min="2" max="10" value="5" class="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer">
-                    </div>
+                     <div class="flex flex-col items-center justify-center md:order-5">
+                         <label class="text-sm font-bold text-slate-600 mb-2">きりかえ</label>
+                          <div class="flex items-center gap-2">
+                            <button id="autoSwitchDecrement" class="control-button">-</button>
+                            <span id="autoSwitchValue" class="control-value">5</span>
+                            <button id="autoSwitchIncrement" class="control-button">+</button>
+                         </div>
+                     </div>
                 </div>
                 <!-- 共通コントロール -->
-                <div class="flex flex-col items-center w-24">
-                    <label for="speedRange" class="text-sm font-bold text-slate-600 mb-1">はやさ</label>
-                    <span id="speedValue" class="text-sm text-slate-500">3</span>
-                    <input type="range" id="speedRange" min="1" max="10" value="3" class="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                <div class="flex flex-col items-center md:order-6">
+                    <label class="text-sm font-bold text-slate-600 mb-2">はやさ</label>
+                     <div class="flex items-center gap-2">
+                        <button id="speedDecrement" class="control-button">-</button>
+                        <span id="speedValue" class="control-value">3</span>
+                        <button id="speedIncrement" class="control-button">+</button>
+                    </div>
                 </div>
-                <div class="flex flex-col items-center w-24">
-                    <label for="sizeRange" class="text-sm font-bold text-slate-600 mb-1">おおきさ</label>
-                    <span id="sizeValue" class="text-sm text-slate-500">30</span>
-                    <input type="range" id="sizeRange" min="10" max="80" value="30" class="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                <div class="flex flex-col items-center md:order-7">
+                    <label class="text-sm font-bold text-slate-600 mb-2">おおきさ</label>
+                     <div class="flex items-center gap-2">
+                        <button id="sizeDecrement" class="control-button">-</button>
+                        <span id="sizeValue" class="control-value">30</span>
+                        <button id="sizeIncrement" class="control-button">+</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -133,18 +152,14 @@
         
         // コントロール
         const colorPicker = document.getElementById('colorPicker');
-        const speedRange = document.getElementById('speedRange');
-        const sizeRange = document.getElementById('sizeRange');
         const bgColorPicker = document.getElementById('bgColorPicker');
-        const ballCountRange = document.getElementById('ballCountRange');
-        const autoSwitchRange = document.getElementById('autoSwitchRange');
 
-        // スライダーの値表示
+        // 値表示
         const speedValue = document.getElementById('speedValue');
         const sizeValue = document.getElementById('sizeValue');
         const ballCountValue = document.getElementById('ballCountValue');
         const autoSwitchValue = document.getElementById('autoSwitchValue');
-        
+
         // UI要素
         const findModeInfo = document.getElementById('findModeInfo');
         const targetColorDisplay = document.getElementById('targetColorDisplay');
@@ -152,17 +167,46 @@
         const findControls = document.getElementById('findControls');
         const autoControls = document.getElementById('autoControls');
 
+        // --- 設定値の変数 ---
+        const settings = {
+            ballCount: { value: 8, min: 3, max: 20, element: ballCountValue },
+            autoSwitch: { value: 5, min: 2, max: 10, element: autoSwitchValue },
+            speed: { value: 3, min: 1, max: 10, element: speedValue },
+            size: { value: 30, min: 10, max: 80, element: sizeValue, step: 5 },
+        };
+        
         // --- グローバル変数 ---
         let animationFrameId;
         let isRunning = false;
         let gameMode = ''; 
         let autoSwitchInterval;
 
-        // ボールオブジェクト（単数・複数）
+        // ボールオブジェクト
         let ball = {}; // モード１用
         let balls = []; // モード２用
         let targetColor = ''; // モード２用
         const findModeColors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#8b5cf6', '#ec4899'];
+
+        // --- 効果音の準備 ---
+        const synths = {
+            '#ef4444': new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 0.5 } }).toDestination(), // 赤 - ぴょん
+            '#3b82f6': new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.001, decay: 0.2, sustain: 0.1, release: 0.5 } }).toDestination(),     // 青 - ぽよん
+            '#22c55e': new Tone.Synth({ oscillator: { type: 'square' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 0.4 } }).toDestination(),   // 緑 - ぴこ
+            '#eab308': new Tone.FMSynth({ harmonicity: 1.5, modulationIndex: 10, oscillator: { type: "sine" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.5 } }).toDestination(), // 黄 - チャリン
+            '#8b5cf6': new Tone.AMSynth({ harmonicity: 3, oscillator: { type: "sawtooth" }, envelope: { attack: 0.01, decay: 0.5, sustain: 0.1, release: 0.5 }}).toDestination(), // 紫 - きらーん
+            '#ec4899': new Tone.MembraneSynth({ pitchDecay: 0.05, octaves: 10, oscillator: { type: 'sine' }, envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4, attackCurve: 'exponential' } }).toDestination() // ピンク - ぽん
+        };
+        const soundNotes = {
+            '#ef4444': 'C5', '#3b82f6': 'E5', '#22c55e': 'G5',
+            '#eab308': 'A5', '#8b5cf6': 'B5', '#ec4899': 'C4'
+        };
+
+        function playSound(color) {
+            if (synths[color] && soundNotes[color]) {
+                synths[color].triggerAttackRelease(soundNotes[color], '8n');
+            }
+        }
+
 
         // --- 関数の定義 ---
 
@@ -176,13 +220,11 @@
         }
 
         /**
-         * メインの描画関数。ゲームモードに応じて描画を切り替える
+         * メインの描画関数
          */
         function draw() {
-            // 背景をクリア
             ctx.fillStyle = bgColorPicker.value;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-
             if (gameMode === 'chase') {
                 drawChaseMode();
             } else { // 'find' or 'auto'
@@ -195,16 +237,12 @@
          */
         function animate() {
             if (!isRunning) return;
-
-            // 位置更新
             if (gameMode === 'chase') {
                 updateChaseMode();
             } else {
                 updateFindMode();
             }
-            // 描画
             draw();
-            
             animationFrameId = requestAnimationFrame(animate);
         }
         
@@ -222,8 +260,12 @@
         /**
          * アニメーションを開始
          */
-        function startAnimation() {
+        async function startAnimation() {
             if (!isRunning) {
+                // Tone.jsのオーディオコンテキストを開始
+                await Tone.start();
+                console.log('Audio is ready');
+
                 isRunning = true;
                 toggleButton.textContent = 'ストップ';
                 toggleButton.classList.remove('bg-slate-200', 'text-slate-700');
@@ -234,11 +276,7 @@
                 }
 
                 if (gameMode === 'auto') {
-                    const switchTime = parseInt(autoSwitchRange.value, 10) * 1000;
-                    autoSwitchInterval = setInterval(() => {
-                        initFindMode();
-                        if(!isRunning) draw(); // アニメーションが止まっていても描画は更新
-                    }, switchTime);
+                    startAutoSwitchTimer();
                 }
 
                 animate();
@@ -262,14 +300,12 @@
         
         /**
          * ゲームモードを切り替える
-         * @param {string} newMode - 'chase', 'find', or 'auto'
          */
         function switchMode(newMode) {
             if(gameMode === newMode) return;
             stopAnimation();
             gameMode = newMode;
             
-            // 全てのボタンとコントロールを一旦リセット
             [modeChaseButton, modeFindButton, modeAutoButton].forEach(btn => btn.classList.remove('active'));
             [chaseControls, findControls, autoControls].forEach(ctrl => ctrl.classList.add('hidden'));
             findModeInfo.style.visibility = 'hidden';
@@ -285,7 +321,7 @@
                 initFindMode();
             } else if (newMode === 'auto') {
                 modeAutoButton.classList.add('active');
-                findControls.classList.remove('hidden'); // ボールのかずは共通
+                findControls.classList.remove('hidden');
                 autoControls.classList.remove('hidden');
                 findModeInfo.style.visibility = 'visible';
                 initFindMode();
@@ -295,12 +331,10 @@
 
         // --- モード１：よくみる ---
         function initChaseMode() {
-            const speed = parseFloat(speedRange.value);
+            const speed = settings.speed.value;
             ball = {
-                x: canvas.width / 2,
-                y: canvas.height / 2,
-                radius: parseInt(sizeRange.value, 10),
-                color: colorPicker.value,
+                x: canvas.width / 2, y: canvas.height / 2,
+                radius: settings.size.value, color: colorPicker.value,
                 dx: speed * (Math.random() > 0.5 ? 1 : -1),
                 dy: speed * (Math.random() > 0.5 ? 1 : -1)
             };
@@ -316,7 +350,7 @@
         }
 
         function updateChaseMode() {
-            if (!ball.radius) initChaseMode(); // 安全策
+            if (!ball.radius) initChaseMode();
             ball.x += ball.dx;
             ball.y += ball.dy;
             if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) ball.dx *= -1;
@@ -329,14 +363,12 @@
             targetColor = findModeColors[Math.floor(Math.random() * findModeColors.length)];
             targetColorDisplay.style.backgroundColor = targetColor;
             
-            const ballCount = parseInt(ballCountRange.value, 10);
-            const radius = parseInt(sizeRange.value, 10);
-            const speed = parseFloat(speedRange.value);
+            const ballCount = settings.ballCount.value;
+            const radius = settings.size.value;
+            const speed = settings.speed.value;
 
-            // 必ず1つはターゲット色のボールを作成
             balls.push(createBall(radius, speed, targetColor));
             
-            // 残りのボールを作成
             for (let i = 0; i < ballCount - 1; i++) {
                 let color = findModeColors[Math.floor(Math.random() * findModeColors.length)];
                 if (color === targetColor && ballCount < findModeColors.length * 2) {
@@ -351,8 +383,7 @@
             return {
                 x: Math.random() * (canvas.width - radius * 2) + radius,
                 y: Math.random() * (canvas.height - radius * 2) + radius,
-                radius: radius,
-                color: color,
+                radius: radius, color: color,
                 dx: Math.cos(angle) * speed,
                 dy: Math.sin(angle) * speed
             };
@@ -370,16 +401,16 @@
 
         function updateFindMode() {
             balls.forEach(b => {
-                b.x += b.dx;
-                b.y += b.dy;
+                b.x += b.dx; b.y += b.dy;
                 if (b.x + b.radius > canvas.width || b.x - b.radius < 0) b.dx *= -1;
                 if (b.y + b.radius > canvas.height || b.y - b.radius < 0) b.dy *= -1;
             });
         }
         
         function handleCanvasClick(event) {
-            // ★修正点：'じどう'モードでもクリックを有効にする
             if ((gameMode !== 'find' && gameMode !== 'auto') || !isRunning) return;
+
+            event.preventDefault(); // touchstartでの画面スクロールを防止
 
             const rect = canvas.getBoundingClientRect();
             const clientX = event.clientX || event.touches[0].clientX;
@@ -392,17 +423,11 @@
                 const distance = Math.sqrt((x - b.x)**2 + (y - b.y)**2);
                 if (distance < b.radius) {
                     if (b.color === targetColor) {
-                        // ★修正点：正解時に新しいセットを開始する
+                        playSound(b.color); // 正解の音を鳴らす
                         initFindMode(); 
                         
-                        // 'じどう'モードの場合は、タイマーをリセットする
                         if (gameMode === 'auto') {
-                            clearInterval(autoSwitchInterval);
-                            const switchTime = parseInt(autoSwitchRange.value, 10) * 1000;
-                            autoSwitchInterval = setInterval(() => {
-                                initFindMode();
-                                if(!isRunning) draw(); 
-                            }, switchTime);
+                            resetAutoSwitchTimer();
                         }
                         
                         draw(); // すぐに再描画
@@ -412,29 +437,40 @@
             }
         }
 
-        // --- イベントリスナーの設定 ---
-        toggleButton.addEventListener('click', toggleAnimation);
-        modeChaseButton.addEventListener('click', () => switchMode('chase'));
-        modeFindButton.addEventListener('click', () => switchMode('find'));
-        modeAutoButton.addEventListener('click', () => switchMode('auto'));
+        // --- コントロール更新関数 ---
+        function updateSetting(settingName, change) {
+            const setting = settings[settingName];
+            const step = setting.step || 1;
+            let newValue = setting.value + change * step;
 
-        canvas.addEventListener('click', handleCanvasClick);
-        canvas.addEventListener('touchstart', handleCanvasClick);
-        
-        // コントロールのイベントリスナー
-        colorPicker.addEventListener('input', (e) => {
-            if (gameMode === 'chase') {
-                ball.color = e.target.value;
-                if (!isRunning) draw();
+            // 最小値・最大値の制限
+            newValue = Math.max(setting.min, Math.min(setting.max, newValue));
+            
+            if (newValue !== setting.value) {
+                setting.value = newValue;
+                setting.element.textContent = newValue;
+
+                // 各設定に応じた処理を実行
+                switch (settingName) {
+                    case 'speed': updateSpeed(); break;
+                    case 'size': updateSize(); break;
+                    case 'ballCount':
+                        if ((gameMode === 'find' || gameMode === 'auto') && !isRunning) {
+                            initFindMode();
+                            draw();
+                        }
+                        break;
+                    case 'autoSwitch':
+                        if (isRunning && gameMode === 'auto') {
+                            resetAutoSwitchTimer();
+                        }
+                        break;
+                }
             }
-        });
-        bgColorPicker.addEventListener('input', (e) => {
-            if (!isRunning) draw();
-        });
-        
+        }
+
         function updateSpeed() {
-            const speed = parseFloat(speedRange.value);
-            speedValue.textContent = speed;
+            const speed = settings.speed.value;
             const updateTarget = (gameMode === 'chase') ? [ball] : balls;
             
             updateTarget.forEach(b => {
@@ -447,41 +483,64 @@
                 }
             });
         }
-        speedRange.addEventListener('input', updateSpeed);
-
         function updateSize() {
-            const radius = parseInt(sizeRange.value, 10);
-            sizeValue.textContent = radius;
+            const radius = settings.size.value;
             const updateTarget = (gameMode === 'chase') ? [ball] : balls;
             updateTarget.forEach(b => { if(b) b.radius = radius; });
             if (!isRunning) draw();
         }
-        sizeRange.addEventListener('input', updateSize);
-        
-        ballCountRange.addEventListener('input', (e) => {
-            ballCountValue.textContent = e.target.value;
-            if ((gameMode === 'find' || gameMode === 'auto') && !isRunning) {
-                initFindMode();
-                draw();
-            }
-        });
 
-        autoSwitchRange.addEventListener('input', (e) => {
-            autoSwitchValue.textContent = `${e.target.value}秒`;
-            if (isRunning && gameMode === 'auto') {
-                clearInterval(autoSwitchInterval);
-                const switchTime = parseInt(e.target.value, 10) * 1000;
-                autoSwitchInterval = setInterval(() => {
-                    initFindMode();
-                    if(!isRunning) draw();
-                }, switchTime);
+        function startAutoSwitchTimer() {
+             const switchTime = settings.autoSwitch.value * 1000;
+             autoSwitchInterval = setInterval(() => {
+                initFindMode();
+                if(!isRunning) draw();
+            }, switchTime);
+        }
+
+        function resetAutoSwitchTimer() {
+            clearInterval(autoSwitchInterval);
+            startAutoSwitchTimer();
+        }
+
+
+        // --- イベントリスナーの設定 ---
+        toggleButton.addEventListener('click', toggleAnimation);
+        modeChaseButton.addEventListener('click', () => switchMode('chase'));
+        modeFindButton.addEventListener('click', () => switchMode('find'));
+        modeAutoButton.addEventListener('click', () => switchMode('auto'));
+
+        canvas.addEventListener('click', handleCanvasClick);
+        canvas.addEventListener('touchstart', handleCanvasClick, { passive: false });
+        
+        colorPicker.addEventListener('input', (e) => {
+            if (gameMode === 'chase') {
+                ball.color = e.target.value;
+                if (!isRunning) draw();
             }
         });
+        bgColorPicker.addEventListener('input', (e) => {
+            if (!isRunning) draw();
+        });
+        
+        // +/- ボタンのイベントリスナー
+        document.getElementById('ballCountIncrement').addEventListener('click', () => updateSetting('ballCount', 1));
+        document.getElementById('ballCountDecrement').addEventListener('click', () => updateSetting('ballCount', -1));
+        document.getElementById('autoSwitchIncrement').addEventListener('click', () => updateSetting('autoSwitch', 1));
+        document.getElementById('autoSwitchDecrement').addEventListener('click', () => updateSetting('autoSwitch', -1));
+        document.getElementById('speedIncrement').addEventListener('click', () => updateSetting('speed', 1));
+        document.getElementById('speedDecrement').addEventListener('click', () => updateSetting('speed', -1));
+        document.getElementById('sizeIncrement').addEventListener('click', () => updateSetting('size', 1));
+        document.getElementById('sizeDecrement').addEventListener('click', () => updateSetting('size', -1));
 
         window.addEventListener('resize', resizeCanvas);
 
         // --- 初期化処理 ---
         function initialize() {
+            // 初期値を画面に表示
+            for (const key in settings) {
+                settings[key].element.textContent = settings[key].value;
+            }
             resizeCanvas();
             switchMode('chase'); // 最初は「よくみる」モードで開始
         }
@@ -490,4 +549,3 @@
     </script>
 </body>
 </html>
-
